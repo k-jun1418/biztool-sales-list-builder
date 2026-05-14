@@ -1,31 +1,53 @@
 from places_api import search_places
 from csv_export import export_csv
-
+from config_loader import load_config
 
 def main():
+
     print("=== BizTool Sales List Builder ===")
 
     area = input("地域を入力してください（例：埼玉県 川口市）: ").strip()
     business_type = input("業種を入力してください（例：不動産会社）: ").strip()
+
+    max_results = input("取得件数（20 / 40 / 60）: ").strip()
+
+    try:
+        max_results = int(max_results)
+    except ValueError:
+        max_results = 20
+
+    # 最小20、最大60
+    max_results = max(20, min(max_results, 60))
+
+    # Places APIは1ページ20件
+    max_pages = max_results // 20
 
     if not area or not business_type:
         print("地域と業種は必須です。")
         return
 
     print("\n検索中...")
-    rows = search_places(
+    config = load_config()
+
+    max_pages = config.get("max_pages", 1)
+
+    result = search_places(
         area=area,
         business_type=business_type,
-        max_pages=1,
+        max_pages=max_pages,
     )
 
-    print(f"取得件数: {len(rows)} 件")
+    rows = result["rows"]
+    total_count = result["total_count"]
+
+    print(f"\n{total_count}件取得しました。")
 
     if not rows:
         print("データが取得できませんでした。")
         return
 
     filepath = export_csv(rows, area, business_type)
+
     print(f"CSV出力完了: {filepath}")
 
 

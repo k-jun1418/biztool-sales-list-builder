@@ -1,0 +1,5 @@
+{
+  "max_pages": 1,
+  "request_timeout": 10,
+  "enable_email_extract": true
+}

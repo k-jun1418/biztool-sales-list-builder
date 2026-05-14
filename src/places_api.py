@@ -77,7 +77,12 @@ def search_places(area: str, business_type: str, max_pages: int = 1) -> list[dic
         if not page_token:
             break
 
-    return remove_duplicates(all_places)
+    rows = remove_duplicates(all_places)
+
+    return {
+        "rows": rows,
+        "total_count": len(rows),
+    }
 
 
 def normalize_place(place: dict) -> dict:
