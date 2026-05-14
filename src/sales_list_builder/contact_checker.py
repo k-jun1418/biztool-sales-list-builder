@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from app_logger import write_error_log
+from sales_list_builder.app_logger import write_error_log
 
 import re
 

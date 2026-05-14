@@ -2,8 +2,8 @@ import os
 import time
 import requests
 from dotenv import load_dotenv
-from contact_checker import find_contact_info
-from app_logger import write_error_log
+from sales_list_builder.contact_checker import find_contact_info
+from sales_list_builder.app_logger import write_error_log
 
 load_dotenv()
 
