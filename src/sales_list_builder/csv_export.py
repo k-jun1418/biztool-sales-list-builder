@@ -16,9 +16,6 @@ def export_csv(rows: list[dict], area: str, business_type: str) -> str:
 
     df = pd.DataFrame(rows)
 
-    if "営業スコア" in df.columns:
-        df = df.sort_values(by="営業スコア", ascending=False)
-
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"sales_list_{area}_{business_type}_{timestamp}.csv"
     filepath = output_dir / sanitize_filename(filename)
