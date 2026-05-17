@@ -1,16 +1,12 @@
-import os
 import time
 import requests
-from dotenv import load_dotenv
 from sales_list_builder.app_logger import write_error_log
 from sales_list_builder.config_loader import load_config
 import json
 from pathlib import Path
 from datetime import datetime
 
-load_dotenv()
-
-API_KEY = os.getenv("GOOGLE_API_KEY")
+API_KEY = None
 TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 
 config = load_config()
@@ -52,14 +48,19 @@ def post_with_retry(url: str, headers: dict, payload: dict) -> requests.Response
 
     raise RuntimeError(f"Places API request failed after retry: {last_error}")
 
-def search_places(area: str, business_type: str, max_pages: int = 1) -> list[dict]:
-    if not API_KEY:
+def search_places(
+    area: str,
+    business_type: str,
+    api_key: str,
+    max_pages: int = 1
+) -> list[dict]:
+    if not api_key:
         raise ValueError("GOOGLE_API_KEY が .env に設定されていません。")
 
     query = build_query(area, business_type)
     headers = {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": API_KEY,
+        "X-Goog-Api-Key": api_key,
         "X-Goog-FieldMask": FIELD_MASK,
     }
 
