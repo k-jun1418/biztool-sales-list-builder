@@ -1,5 +1,26 @@
 {
   "max_pages": 1,
   "request_timeout": 10,
-  "enable_email_extract": true
+  "request_retry_count": 3,
+  "request_retry_wait_seconds": 2,
+  "save_raw_response": false,
+
+  "field_mask": [
+    "places.id",
+    "places.displayName",
+    "places.formattedAddress",
+    "places.nationalPhoneNumber",
+    "places.websiteUri",
+    "places.types",
+    "nextPageToken"
+  ],
+
+  "output_fields": {
+    "place_id": true,
+    "会社名": true,
+    "住所": true,
+    "電話番号": true,
+    "ホームページ": true,
+    "業種タイプ": true
+  }
 }

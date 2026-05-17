@@ -2,7 +2,10 @@ import json
 from pathlib import Path
 
 
-CONFIG_PATH = Path("config.json")
+CONFIG_PATH = (
+    Path(__file__).resolve().parent.parent.parent
+    / "config.json"
+)
 
 
 def load_config() -> dict:

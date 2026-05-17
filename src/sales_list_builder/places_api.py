@@ -3,28 +3,60 @@ import time
 import requests
 from dotenv import load_dotenv
 from sales_list_builder.app_logger import write_error_log
+from sales_list_builder.config_loader import load_config
+import json
+from pathlib import Path
+from datetime import datetime
 
 load_dotenv()
 
 API_KEY = os.getenv("GOOGLE_API_KEY")
 TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 
-FIELD_MASK = ",".join([
-    "places.id",
-    "places.displayName",
-    "places.formattedAddress",
-    "places.nationalPhoneNumber",
-    "places.websiteUri",
-    "places.rating",
-    "nextPageToken",
-])
+config = load_config()
 
+FIELD_MASK = ",".join(config.get("field_mask", []))
+REQUEST_TIMEOUT = config.get("request_timeout", 30)
+RETRY_COUNT = config.get("request_retry_count", 3)
+RETRY_WAIT_SECONDS = config.get("request_retry_wait_seconds", 2)
+SAVE_RAW_RESPONSE = config.get("save_raw_response", False)
+OUTPUT_FIELDS = config.get("output_fields", {})
+
+def build_query(area: str, business_type: str) -> str:
+    return f"{area} {business_type}".strip()
+
+def post_with_retry(url: str, headers: dict, payload: dict) -> requests.Response:
+    last_error = None
+
+    for attempt in range(RETRY_COUNT):
+        try:
+            response = requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=REQUEST_TIMEOUT,
+            )
+
+            if response.status_code in [429, 500, 502, 503, 504]:
+                last_error = RuntimeError(
+                    f"retry target status: {response.status_code}"
+                )
+                time.sleep(RETRY_WAIT_SECONDS)
+                continue
+
+            return response
+
+        except requests.RequestException as e:
+            last_error = e
+            time.sleep(RETRY_WAIT_SECONDS)
+
+    raise RuntimeError(f"Places API request failed after retry: {last_error}")
 
 def search_places(area: str, business_type: str, max_pages: int = 1) -> list[dict]:
     if not API_KEY:
         raise ValueError("GOOGLE_API_KEY が .env に設定されていません。")
 
-    query = f"{area} {business_type}"
+    query = build_query(area, business_type)
     headers = {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": API_KEY,
@@ -46,11 +78,10 @@ def search_places(area: str, business_type: str, max_pages: int = 1) -> list[dic
             payload["pageToken"] = page_token
             time.sleep(2)
 
-        response = requests.post(
+        response = post_with_retry(
             TEXT_SEARCH_URL,
-            headers=headers,
-            json=payload,
-            timeout=30,
+            headers,
+            payload,
         )
 
         if response.status_code != 200:
@@ -59,6 +90,7 @@ def search_places(area: str, business_type: str, max_pages: int = 1) -> list[dic
             raise RuntimeError(error_message)
 
         data = response.json()
+        save_raw_response(data, area, business_type, page)
         places = data.get("places", [])
 
         for place in places:
@@ -85,7 +117,7 @@ def normalize_place(place: dict) -> dict:
     display_name = place.get("displayName", {}).get("text", "")
     website_url = place.get("websiteUri", "")
 
-    return {
+    row = {
         "place_id": place.get("id", ""),
         "会社名": display_name,
         "住所": place.get("formattedAddress", ""),
@@ -93,6 +125,8 @@ def normalize_place(place: dict) -> dict:
         "ホームページ": website_url,
         "業種タイプ": ",".join(place.get("types", [])),
     }
+
+    return filter_output_fields(row)
 
 
 def remove_duplicates(rows: list[dict]) -> list[dict]:
@@ -107,3 +141,35 @@ def remove_duplicates(rows: list[dict]) -> list[dict]:
         unique_rows.append(row)
 
     return unique_rows
+
+def filter_output_fields(row: dict) -> dict:
+
+    if not OUTPUT_FIELDS:
+        return row
+
+    return {
+        key: value
+        for key, value in row.items()
+        if OUTPUT_FIELDS.get(key, False)
+    }
+
+def save_raw_response(data: dict, area: str, business_type: str, page: int):
+    if not SAVE_RAW_RESPONSE:
+        return
+
+    raw_dir = Path("raw")
+    raw_dir.mkdir(exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"places_raw_{area}_{business_type}_page{page + 1}_{timestamp}.json"
+    filepath = raw_dir / sanitize_filename(filename)
+
+    with filepath.open("w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def sanitize_filename(filename: str) -> str:
+    invalid_chars = '\\/:*?"<>|'
+    for char in invalid_chars:
+        filename = filename.replace(char, "_")
+    return filename
