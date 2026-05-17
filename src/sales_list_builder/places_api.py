@@ -85,6 +85,12 @@ def search_places(
             payload,
         )
 
+        if response.status_code == 403:
+
+            raise PermissionError(
+                "Google APIキーが無効です"
+            )
+
         if response.status_code != 200:
             error_message = f"Places API error: {response.status_code}\n{response.text}"
             write_error_log(error_message)
