@@ -15,19 +15,11 @@ TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 
 config = load_config()
 
-OUTPUT_FIELDS = config.get(
-    "output_fields",
-    []
-)
-
-config = load_config()
-
 FIELD_MASK = ",".join(config.get("field_mask", []))
 REQUEST_TIMEOUT = config.get("request_timeout", 30)
 RETRY_COUNT = config.get("request_retry_count", 3)
 RETRY_WAIT_SECONDS = config.get("request_retry_wait_seconds", 2)
 SAVE_RAW_RESPONSE = config.get("save_raw_response", False)
-
 OUTPUT_FIELDS = config.get("output_fields", {})
 
 def build_query(area: str, business_type: str) -> str:
