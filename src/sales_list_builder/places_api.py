@@ -1,12 +1,14 @@
+import json
 import time
+from datetime import datetime
+from pathlib import Path
+
 import requests
+
 from sales_list_builder.app_logger import write_error_log
 from sales_list_builder.config_loader import load_config
-import json
-from pathlib import Path
-from datetime import datetime
 
-API_KEY = None
+
 TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 
 config = load_config()
@@ -18,13 +20,15 @@ RETRY_WAIT_SECONDS = config.get("request_retry_wait_seconds", 2)
 SAVE_RAW_RESPONSE = config.get("save_raw_response", False)
 OUTPUT_FIELDS = config.get("output_fields", {})
 
+
 def build_query(area: str, business_type: str) -> str:
     return f"{area} {business_type}".strip()
+
 
 def post_with_retry(url: str, headers: dict, payload: dict) -> requests.Response:
     last_error = None
 
-    for attempt in range(RETRY_COUNT):
+    for _ in range(RETRY_COUNT):
         try:
             response = requests.post(
                 url,
@@ -33,9 +37,16 @@ def post_with_retry(url: str, headers: dict, payload: dict) -> requests.Response
                 timeout=REQUEST_TIMEOUT,
             )
 
-            if response.status_code in [429, 500, 502, 503, 504]:
+            if response.status_code == 429:
                 last_error = RuntimeError(
-                    f"retry target status: {response.status_code}"
+                    "Google APIの利用上限、または一時的な制限に達しました。"
+                )
+                time.sleep(RETRY_WAIT_SECONDS)
+                continue
+
+            if response.status_code in [500, 502, 503, 504]:
+                last_error = RuntimeError(
+                    f"Google APIの一時エラーです: {response.status_code}"
                 )
                 time.sleep(RETRY_WAIT_SECONDS)
                 continue
@@ -46,18 +57,23 @@ def post_with_retry(url: str, headers: dict, payload: dict) -> requests.Response
             last_error = e
             time.sleep(RETRY_WAIT_SECONDS)
 
-    raise RuntimeError(f"Places API request failed after retry: {last_error}")
+    raise RuntimeError(
+        "Google Places APIへの接続に失敗しました。"
+        f"時間をおいて再試行してください。詳細: {last_error}"
+    )
+
 
 def search_places(
     area: str,
     business_type: str,
     api_key: str,
-    max_pages: int = 1
-) -> list[dict]:
+    max_pages: int = 1,
+) -> dict:
     if not api_key:
-        raise ValueError("GOOGLE_API_KEY が .env に設定されていません。")
+        raise ValueError("Google APIキーが設定されていません。")
 
     query = build_query(area, business_type)
+
     headers = {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": api_key,
@@ -86,18 +102,25 @@ def search_places(
         )
 
         if response.status_code == 403:
-
-            raise PermissionError(
-                "Google APIキーが無効です"
-            )
+            raise PermissionError("Google APIキーが無効です。")
 
         if response.status_code != 200:
-            error_message = f"Places API error: {response.status_code}\n{response.text}"
+            error_message = (
+                f"Places API error: {response.status_code}\n"
+                f"{response.text}"
+            )
             write_error_log(error_message)
             raise RuntimeError(error_message)
 
         data = response.json()
-        save_raw_response(data, area, business_type, page)
+
+        save_raw_response(
+            data=data,
+            area=area,
+            business_type=business_type,
+            page=page,
+        )
+
         places = data.get("places", [])
 
         for place in places:
@@ -109,6 +132,7 @@ def search_places(
                 continue
 
         page_token = data.get("nextPageToken")
+
         if not page_token:
             break
 
@@ -136,21 +160,7 @@ def normalize_place(place: dict) -> dict:
     return filter_output_fields(row)
 
 
-def remove_duplicates(rows: list[dict]) -> list[dict]:
-    seen = set()
-    unique_rows = []
-
-    for row in rows:
-        key = row.get("place_id") or f"{row.get('会社名')}|{row.get('住所')}"
-        if key in seen:
-            continue
-        seen.add(key)
-        unique_rows.append(row)
-
-    return unique_rows
-
 def filter_output_fields(row: dict) -> dict:
-
     if not OUTPUT_FIELDS:
         return row
 
@@ -160,7 +170,29 @@ def filter_output_fields(row: dict) -> dict:
         if OUTPUT_FIELDS.get(key, False)
     }
 
-def save_raw_response(data: dict, area: str, business_type: str, page: int):
+
+def remove_duplicates(rows: list[dict]) -> list[dict]:
+    seen = set()
+    unique_rows = []
+
+    for row in rows:
+        key = row.get("place_id") or f"{row.get('会社名')}|{row.get('住所')}"
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        unique_rows.append(row)
+
+    return unique_rows
+
+
+def save_raw_response(
+    data: dict,
+    area: str,
+    business_type: str,
+    page: int,
+):
     if not SAVE_RAW_RESPONSE:
         return
 
@@ -168,7 +200,10 @@ def save_raw_response(data: dict, area: str, business_type: str, page: int):
     raw_dir.mkdir(exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"places_raw_{area}_{business_type}_page{page + 1}_{timestamp}.json"
+    filename = (
+        f"places_raw_{area}_{business_type}_"
+        f"page{page + 1}_{timestamp}.json"
+    )
     filepath = raw_dir / sanitize_filename(filename)
 
     with filepath.open("w", encoding="utf-8") as f:
@@ -177,6 +212,8 @@ def save_raw_response(data: dict, area: str, business_type: str, page: int):
 
 def sanitize_filename(filename: str) -> str:
     invalid_chars = '\\/:*?"<>|'
+
     for char in invalid_chars:
         filename = filename.replace(char, "_")
+
     return filename
