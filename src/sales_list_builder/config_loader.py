@@ -1,11 +1,16 @@
 import json
+import sys
 from pathlib import Path
 
 
-CONFIG_PATH = (
-    Path(__file__).resolve().parent.parent.parent
-    / "config.json"
-)
+def get_base_path() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+
+    return Path(__file__).resolve().parent.parent.parent
+
+
+CONFIG_PATH = get_base_path() / "config.json"
 
 
 def load_config() -> dict:
