@@ -13,7 +13,12 @@ CORE_COLUMNS = [
 ]
 
 
-def export_csv(rows: list[dict], area: str, business_type: str) -> str:
+def export_csv(
+    rows: list[dict],
+    area: str,
+    business_type: str,
+    column_order: list[str] | None = None,
+) -> str:
     output_dir = Path("output")
     output_dir.mkdir(exist_ok=True)
 
@@ -32,7 +37,10 @@ def export_csv(rows: list[dict], area: str, business_type: str) -> str:
 
     df = pd.DataFrame(cleaned_rows)
 
-    df = apply_column_order(df)
+    df = apply_column_order(
+        df,
+        column_order=column_order,
+    )
     df = df.fillna("")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -68,31 +76,25 @@ def normalize_url(url: str) -> str:
     return url.strip()
 
 
-def apply_column_order(df: pd.DataFrame) -> pd.DataFrame:
-    common_tail_columns = [
-        "アプリバージョン",
-        "検索地域",
-        "検索業種",
-        "取得日時",
-    ]
+def apply_column_order(
+    df: pd.DataFrame,
+    column_order: list[str] | None = None,
+) -> pd.DataFrame:
 
-    first_columns = [
-        column for column in CORE_COLUMNS
+    if not column_order:
+        return df
+
+    existing_columns = [
+        column for column in column_order
         if column in df.columns
     ]
 
-    tail_columns = [
-        column for column in common_tail_columns
-        if column in df.columns
-    ]
-
-    middle_columns = [
+    extra_columns = [
         column for column in df.columns
-        if column not in first_columns
-        and column not in tail_columns
+        if column not in existing_columns
     ]
 
-    return df[first_columns + middle_columns + tail_columns]
+    return df[existing_columns + extra_columns]
 
 
 def sanitize_filename(filename: str) -> str:
