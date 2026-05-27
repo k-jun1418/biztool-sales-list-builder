@@ -9,7 +9,19 @@ CORE_COLUMNS = [
     "住所",
     "電話番号",
     "ホームページ",
+
+    "HP有無",
+    "問い合わせURL",
+    "問い合わせ有無",
+    "フォーム有無",
+    "メールアドレス",
+    "メール有無",
+    "営業スコア",
+
     "業種タイプ",
+    "検索地域",
+    "検索業種",
+    "取得日時",
 ]
 
 
@@ -39,7 +51,7 @@ def export_csv(
 
     df = apply_column_order(
         df,
-        column_order=column_order,
+        column_order=column_order or CORE_COLUMNS,
     )
     df = df.fillna("")
 

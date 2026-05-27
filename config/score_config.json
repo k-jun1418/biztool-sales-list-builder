@@ -1,0 +1,10 @@
+{
+  "enable_contact_check": true,
+  "enable_email_extract": true,
+  "enable_score": true,
+
+  "website_score": 1,
+  "contact_url_score": 2,
+  "form_score": 3,
+  "email_score": 2
+}

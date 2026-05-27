@@ -1,6 +1,7 @@
 from sales_list_builder.places_api import search_places
 from sales_list_builder.csv_export import export_csv
 from sales_list_builder.config_loader import load_config
+from sales_list_builder.contact_lead_enricher import enrich_leads
 
 def main():
 
@@ -45,6 +46,10 @@ def main():
     if not rows:
         print("データが取得できませんでした。")
         return
+
+    print("メール・問い合わせ情報を取得中...")
+
+    rows = enrich_leads(rows)
 
     filepath = export_csv(rows, area, business_type)
 
