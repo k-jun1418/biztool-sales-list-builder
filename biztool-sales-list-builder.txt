@@ -1,0 +1,60 @@
+フォルダー パスの一覧:  ボリューム ボリューム
+ボリューム シリアル番号は 00000035 1E25:F9B4 です
+D:.
+│  .env
+│  .gitignore
+│  biztool-sales-list-builder.txt
+│  config.json
+│  pyproject.toml
+│  README.md
+│  requirements.txt
+│  リリース前チェック.txt
+│  
+├─config
+│      lead_columns.json
+│      score_config.json
+│      
+├─output
+├─src
+│  ├─sales_list_builder
+│  │  │  app_logger.py
+│  │  │  config_loader.py
+│  │  │  contact_checker.py
+│  │  │  contact_lead_enricher.py
+│  │  │  csv_export.py
+│  │  │  lead_columns_loader.py
+│  │  │  places_api.py
+│  │  │  score_loader.py
+│  │  │  __init__.py
+│  │  │  
+│  │  └─__pycache__
+│  │          app_logger.cpython-313.pyc
+│  │          config_loader.cpython-313.pyc
+│  │          contact_checker.cpython-313.pyc
+│  │          contact_lead_enricher.cpython-313.pyc
+│  │          csv_export.cpython-313.pyc
+│  │          lead_columns_loader.cpython-313.pyc
+│  │          places_api.cpython-313.pyc
+│  │          score_loader.cpython-313.pyc
+│  │          __init__.cpython-313.pyc
+│  │          
+│  ├─sales_list_builder.egg-info
+│  │      dependency_links.txt
+│  │      PKG-INFO
+│  │      SOURCES.txt
+│  │      top_level.txt
+│  │      
+│  ├─tools
+│  │      main.py
+│  │      
+│  └─__pycache__
+│          app_logger.cpython-313.pyc
+│          config_loader.cpython-313.pyc
+│          contact_checker.cpython-313.pyc
+│          csv_export.cpython-313.pyc
+│          places_api.cpython-313.pyc
+│          
+└─__pycache__
+        csv_export.cpython-313.pyc
+        places_api.cpython-313.pyc
+        

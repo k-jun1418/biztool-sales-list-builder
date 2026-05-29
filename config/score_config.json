@@ -1,4 +1,15 @@
 {
+  "_comment": {
+    "enable_contact_check": "問い合わせURL・フォーム・メール解析を行う",
+    "enable_email_extract": "メールアドレス抽出を行う",
+    "enable_score": "営業スコア計算を行う",
+
+    "website_score": "HPが存在する場合の加点",
+    "contact_url_score": "問い合わせURLが存在する場合の加点",
+    "form_score": "問い合わせフォームが存在する場合の加点",
+    "email_score": "メールアドレスが取得できた場合の加点"
+  },
+
   "enable_contact_check": true,
   "enable_email_extract": true,
   "enable_score": true,

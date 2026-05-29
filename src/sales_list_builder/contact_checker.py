@@ -88,6 +88,8 @@ def find_contact_from_links(website_url: str) -> tuple[str, bool, list[str]]:
             headers=HEADERS,
         )
 
+        response.encoding = response.apparent_encoding
+
         if response.status_code >= 400:
             return "", False, []
 
@@ -100,11 +102,10 @@ def find_contact_from_links(website_url: str) -> tuple[str, bool, list[str]]:
             if is_invalid_href(href_lower):
                 continue
 
-            text = a_tag.get_text(strip=True).lower()
-            href = a_tag["href"].lower()
+            link_text = get_link_search_text(a_tag)
 
             if any(
-                keyword.lower() in text or keyword.lower() in href
+                keyword.lower() in link_text
                 for keyword in CONTACT_KEYWORDS
             ):
                 contact_url = urljoin(website_url, a_tag["href"])
@@ -141,6 +142,21 @@ def is_invalid_href(href: str) -> bool:
 
     return any(href.startswith(prefix) for prefix in invalid_prefixes)
 
+def get_link_search_text(a_tag) -> str:
+    texts = [
+        a_tag.get_text(strip=True),
+        a_tag.get("href", ""),
+        a_tag.get("title", ""),
+        a_tag.get("aria-label", ""),
+    ]
+
+    img_tag = a_tag.find("img")
+    if img_tag:
+        texts.append(img_tag.get("alt", ""))
+        texts.append(img_tag.get("title", ""))
+
+    return " ".join(texts).lower()
+
 def find_child_contact_page(contact_url: str) -> str:
     try:
         response = requests.get(
@@ -150,6 +166,8 @@ def find_child_contact_page(contact_url: str) -> str:
             allow_redirects=True,
         )
 
+        response.encoding = response.apparent_encoding
+
         if response.status_code >= 400:
             return ""
 
@@ -158,12 +176,14 @@ def find_child_contact_page(contact_url: str) -> str:
         for a_tag in soup.find_all("a", href=True):
             href_raw = a_tag["href"].strip()
             href_lower = href_raw.lower()
-            text = a_tag.get_text(strip=True).lower()
+            href_lower = href_raw.lower()
 
             if is_invalid_href(href_lower):
                 continue
 
-            if any(keyword.lower() in text or keyword.lower() in href_lower for keyword in CONTACT_KEYWORDS):
+            link_text = get_link_search_text(a_tag)
+
+            if any(keyword.lower() in link_text for keyword in CONTACT_KEYWORDS):
                 child_url = urljoin(contact_url, href_raw)
 
                 if check_form_exists(child_url):
@@ -172,7 +192,7 @@ def find_child_contact_page(contact_url: str) -> str:
         return ""
 
     except requests.RequestException as e:
-        write_error_log(f"find_child_contact_page error: {contact_url} / {e}")
+        write_error_log(f"find_contact_from_links error: {contact_url} / {e}")
         return ""
 
 def find_contact_from_common_paths(website_url: str) -> tuple[str, bool, list[str]]:
@@ -206,6 +226,8 @@ def page_exists(url: str) -> bool:
             allow_redirects=True,
         )
 
+        response.encoding = response.apparent_encoding
+
         if response.status_code >= 400:
             return False
 
@@ -217,7 +239,7 @@ def page_exists(url: str) -> bool:
         return True
 
     except requests.RequestException as e:
-        write_error_log(f"page_exists error: {url} / {e}")
+        write_error_log(f"find_contact_from_links error: {url} / {e}")
         return False
 
 
@@ -229,6 +251,8 @@ def check_form_exists(url: str) -> bool:
             headers=HEADERS,
         )
 
+        response.encoding = response.apparent_encoding
+
         if response.status_code >= 400:
             return False
 
@@ -237,13 +261,16 @@ def check_form_exists(url: str) -> bool:
         return soup.find("form") is not None
 
     except requests.RequestException as e:
-        write_error_log(f"check_form_exists error: {url} / {e}")
+        write_error_log(f"find_contact_from_links error: {url} / {e}")
         return False
 
 EMAIL_REGEX = re.compile(
     r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"
 )
-
+MAILTO_REGEX = re.compile(
+    r"mailto:([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)",
+    re.IGNORECASE,
+)
 
 def extract_emails_from_html(html: str) -> list[str]:
     emails = set()
@@ -252,19 +279,32 @@ def extract_emails_from_html(html: str) -> list[str]:
     for email in EMAIL_REGEX.findall(html):
         emails.add(email)
 
+    for email in MAILTO_REGEX.findall(html):
+        emails.add(email)
+
     # よくあるダミー除外
     dummy_keywords = [
         "example.com",
         "example.jp",
         "yourdomain",
         "domain.com",
+        "sample",
+        "dummy",
+        "test",
+        "localhost",
+        "hyldemoer",
     ]
 
     filtered = []
     for email in emails:
         email_lower = email.lower()
+
+        if ".." in email_lower:
+            continue
+
         if any(dummy in email_lower for dummy in dummy_keywords):
             continue
+
         filtered.append(email)
 
     return sorted(filtered)
@@ -284,7 +324,7 @@ def extract_emails_from_url(url: str) -> list[str]:
         return extract_emails_from_html(response.text)
 
     except requests.RequestException as e:
-        write_error_log(f"extract_emails_from_url error: {url} / {e}")
+        write_error_log(f"find_contact_from_links error: {url} / {e}")
         return []
 
 

@@ -5,7 +5,7 @@ from sales_list_builder.score_loader import load_score_config
 score_config = load_score_config()
 
 
-def enrich_leads(rows: list[dict]) -> list[dict]:
+def enrich_contact_info(rows: list[dict]) -> list[dict]:
     enriched_rows = []
 
     for row in rows:
@@ -45,7 +45,17 @@ def enrich_leads(rows: list[dict]) -> list[dict]:
             enriched_rows.append(enriched_row)
 
         except Exception:
-            enriched_rows.append(row.copy())
+            fallback_row = row.copy()
+
+            fallback_row["HP有無"] = "あり" if fallback_row.get("ホームページ", "") else "なし"
+            fallback_row["問い合わせURL"] = ""
+            fallback_row["問い合わせ有無"] = "なし"
+            fallback_row["フォーム有無"] = "なし"
+            fallback_row["メールアドレス"] = ""
+            fallback_row["メール有無"] = "なし"
+            fallback_row["営業スコア"] = ""
+
+            enriched_rows.append(fallback_row)
 
     enriched_rows.sort(
         key=lambda x: x.get("営業スコア", 0),
