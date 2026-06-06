@@ -272,6 +272,46 @@ MAILTO_REGEX = re.compile(
     re.IGNORECASE,
 )
 
+# Rule A: ダミードメイン完全一致リスト
+_DUMMY_DOMAINS = {
+    "example.com", "example.jp", "example.net", "example.org",
+    "test.com", "test.jp", "test.net",
+    "localhost", "localhost.com",
+    "domain.com", "yourdomain.com",
+    "sample.com", "sample.jp",
+    "dummy.com", "dummy.jp",
+    "xxx.com", "xxx.xxx",
+    "hogehoge.com",
+}
+
+# Rule C: フェイクローカル部完全一致リスト
+_FAKE_LOCAL_PARTS = {
+    "noreply", "no-reply", "donotreply", "do-not-reply",
+    "hogehoge", "hoge",
+    "xxx", "yyy", "zzz",
+}
+
+
+def _is_dummy_email(email: str) -> bool:
+    if "@" not in email:
+        return True
+    local, domain = email.lower().rsplit("@", 1)
+
+    # Rule A: ダミードメイン完全一致
+    if domain in _DUMMY_DOMAINS:
+        return True
+
+    # Rule B: 対称パターン（ローカル部 == ドメイン第1ラベル）
+    if local == domain.split(".")[0]:
+        return True
+
+    # Rule C: フェイクローカル部完全一致
+    if local in _FAKE_LOCAL_PARTS:
+        return True
+
+    return False
+
+
 def extract_emails_from_html(html: str) -> list[str]:
     emails = set()
 
@@ -282,29 +322,12 @@ def extract_emails_from_html(html: str) -> list[str]:
     for email in MAILTO_REGEX.findall(html):
         emails.add(email)
 
-    # よくあるダミー除外
-    dummy_keywords = [
-        "example.com",
-        "example.jp",
-        "yourdomain",
-        "domain.com",
-        "sample",
-        "dummy",
-        "test",
-        "localhost",
-        "hyldemoer",
-    ]
-
     filtered = []
     for email in emails:
-        email_lower = email.lower()
-
-        if ".." in email_lower:
+        if ".." in email.lower():
             continue
-
-        if any(dummy in email_lower for dummy in dummy_keywords):
+        if _is_dummy_email(email):
             continue
-
         filtered.append(email)
 
     return sorted(filtered)
