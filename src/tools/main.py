@@ -1,7 +1,15 @@
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
 from sales_list_builder.places_api import search_places
 from sales_list_builder.csv_export import export_csv
-from sales_list_builder.config_loader import load_config
-from sales_list_builder.contact_lead_enricher import enrich_leads
+from sales_list_builder.contact_lead_enricher import enrich_contact_info
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+load_dotenv(_PROJECT_ROOT / ".env")
+
 
 def main():
 
@@ -27,14 +35,18 @@ def main():
         print("地域と業種は必須です。")
         return
 
-    print("\n検索中...")
-    config = load_config()
+    google_api_key = os.getenv("GOOGLE_API_KEY", "").strip()
 
-    max_pages = config.get("max_pages", 1)
+    if not google_api_key:
+        print("エラー: GOOGLE_API_KEY が .env に設定されていません。")
+        return
+
+    print("\n検索中...")
 
     result = search_places(
         area=area,
         business_type=business_type,
+        api_key=google_api_key,
         max_pages=max_pages,
     )
 
@@ -49,7 +61,7 @@ def main():
 
     print("メール・問い合わせ情報を取得中...")
 
-    rows = enrich_leads(rows)
+    rows = enrich_contact_info(rows)
 
     filepath = export_csv(rows, area, business_type)
 

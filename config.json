@@ -12,6 +12,8 @@
     "places.nationalPhoneNumber",
     "places.websiteUri",
     "places.types",
+    "places.rating",
+    "places.userRatingCount",
     "nextPageToken"
   ],
 
@@ -21,6 +23,8 @@
     "住所": true,
     "電話番号": true,
     "ホームページ": true,
-    "業種タイプ": true
+    "業種タイプ": true,
+    "評価": true,
+    "口コミ数": true
   }
 }

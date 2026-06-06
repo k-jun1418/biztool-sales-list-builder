@@ -155,6 +155,8 @@ def normalize_place(place: dict) -> dict:
         "電話番号": place.get("nationalPhoneNumber", ""),
         "ホームページ": website_url,
         "業種タイプ": ",".join(place.get("types", [])),
+        "評価": place.get("rating", ""),
+        "口コミ数": place.get("userRatingCount", ""),
     }
 
     return filter_output_fields(row)
