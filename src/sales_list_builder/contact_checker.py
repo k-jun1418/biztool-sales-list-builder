@@ -290,10 +290,10 @@ def check_form_exists(url: str) -> bool:
         return False
 
 EMAIL_REGEX = re.compile(
-    r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"
+    r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}"
 )
 MAILTO_REGEX = re.compile(
-    r"mailto:([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)",
+    r"mailto:([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,})",
     re.IGNORECASE,
 )
 
