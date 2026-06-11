@@ -124,7 +124,7 @@ output/sales_list_東京都新宿区_不動産会社_20260610_120000.csv
 ## フォルダ構成
 
 ```
-D:\CursorDev\KOTO_WORKS\packages\sales-list-builder\
+<workspace>\packages\sales-list-builder\
 ├── .env                    ← 自分で作成（Gitには含めない）
 ├── .env.example            ← テンプレート
 ├── config.json             ← API動作設定

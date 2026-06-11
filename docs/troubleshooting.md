@@ -90,7 +90,7 @@ pip install -e .
 プロジェクトのルートフォルダ（`config.json` がある場所）からコマンドを実行してください。
 
 ```
-cd D:\CursorDev\KOTO_WORKS\packages\sales-list-builder
+cd <workspace>\packages\sales-list-builder
 python src/tools/main.py
 ```
 
@@ -180,4 +180,4 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 | `pip install -r requirements.txt` のみ | + `pip install -e .` も実行 |
 | `.env.txt` というファイル名 | `.env`（拡張子なし） |
 | 仮想環境を有効化せずにインストール | `.venv\Scripts\activate` してから `pip install` |
-| 別フォルダから実行 | `D:\CursorDev\KOTO_WORKS\packages\sales-list-builder` で実行 |
+| 別フォルダから実行 | `<workspace>\packages\sales-list-builder` で実行 |

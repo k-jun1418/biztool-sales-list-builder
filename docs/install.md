@@ -2,6 +2,11 @@
 
 別PCで初めてセットアップする方向けの手順書です。
 
+> **`<workspace>` について**  
+> このドキュメントでは `<workspace>` をワークスペースのルートフォルダとして記載しています。  
+> 実際に配置したフォルダに読み替えてください。  
+> 例: `C:\KOTO_WORKS`、`D:\Projects\KOTO_WORKS`
+
 ---
 
 ## 必要なもの（事前準備）
@@ -19,18 +24,15 @@
 
 ## 手順 1: プロジェクトを取得する
 
-> **標準配置先**: `D:\CursorDev\KOTO_WORKS\packages\sales-list-builder`
-> 個別パッケージは `D:\CursorDev\KOTO_WORKS\packages\` 配下に配置してください。
-
 ### Git がある場合
 ```
-cd D:\CursorDev\KOTO_WORKS\packages
+cd <workspace>\packages
 git clone <リポジトリURL>
 cd sales-list-builder
 ```
 
 ### Git がない場合
-ZIPをダウンロードして `D:\CursorDev\KOTO_WORKS\packages\` に展開し、そのフォルダをコマンドプロンプトで開く。
+ZIP をダウンロードして任意のフォルダに展開し、そのフォルダをコマンドプロンプトで開く。
 
 ---
 
