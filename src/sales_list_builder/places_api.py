@@ -68,6 +68,7 @@ def search_places(
     business_type: str,
     api_key: str,
     max_pages: int = 1,
+    city_filter: str = "",
 ) -> dict:
     if not api_key:
         raise ValueError("Google APIキーが設定されていません。")
@@ -137,6 +138,16 @@ def search_places(
             break
 
     rows = remove_duplicates(all_places)
+
+    if city_filter:
+        before_count = len(rows)
+        rows = [r for r in rows if city_filter in r.get("住所", "")]
+        excluded_count = before_count - len(rows)
+        if excluded_count > 0:
+            print(
+                f"[地域フィルタ] 市区町村不一致により {excluded_count} 件を除外しました"
+                f"（city={city_filter}、残り {len(rows)} 件）"
+            )
 
     return {
         "rows": rows,
