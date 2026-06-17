@@ -316,6 +316,12 @@ _FAKE_LOCAL_PARTS = {
     "xxx", "yyy", "zzz",
 }
 
+# Rule D: システム由来キーワード（ローカル部 or ドメイン部への部分一致）
+_SYSTEM_KEYWORDS = {"sentry"}
+
+# Rule E: システム由来ドメイン（完全一致またはサブドメイン）
+_SYSTEM_DOMAINS = {"wixpress.com"}
+
 
 def _is_dummy_email(email: str) -> bool:
     if "@" not in email:
@@ -332,6 +338,14 @@ def _is_dummy_email(email: str) -> bool:
 
     # Rule C: フェイクローカル部完全一致
     if local in _FAKE_LOCAL_PARTS:
+        return True
+
+    # Rule D: システム由来キーワード（ローカル部 or ドメイン部に部分一致）
+    if any(kw in local or kw in domain for kw in _SYSTEM_KEYWORDS):
+        return True
+
+    # Rule E: システム由来ドメイン（完全一致またはサブドメイン）
+    if domain in _SYSTEM_DOMAINS or any(domain.endswith("." + d) for d in _SYSTEM_DOMAINS):
         return True
 
     return False
