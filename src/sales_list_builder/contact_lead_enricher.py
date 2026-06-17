@@ -38,7 +38,7 @@ def enrich_contact_info(rows: list[dict]) -> list[dict]:
             enriched_row["問い合わせURL"] = contact_url
             enriched_row["問い合わせ有無"] = "あり" if contact_url else "なし"
             enriched_row["フォーム有無"] = "あり" if has_form else "なし"
-            enriched_row["メールアドレス"] = ", ".join(emails)
+            enriched_row["メールアドレス"] = ";".join(emails)
             enriched_row["メール有無"] = "あり" if emails else "なし"
             enriched_row["営業スコア"] = sales_score
 
