@@ -1,11 +1,12 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from sales_list_builder.app_logger import write_error_log
+from sales_list_builder.app_logger import write_error_log, write_info_log
 
 import re
 
 
+# 優先度1: 問い合わせページ系
 CONTACT_KEYWORDS = [
     "お問い合わせ",
     "お問合せ",
@@ -17,6 +18,27 @@ CONTACT_KEYWORDS = [
     "フォーム",
     "相談",
     "資料請求",
+]
+
+# 優先度2: 会社概要・店舗概要系
+ABOUT_KEYWORDS = [
+    "会社概要",
+    "会社案内",
+    "会社情報",
+    "企業情報",
+    "事業概要",
+    "事業所概要",
+    "店舗概要",
+    "店舗情報",
+    "店舗案内",
+    "当店について",
+    "私たちについて",
+    "about us",
+    "about",
+    "company",
+    "profile",
+    "shop",
+    "access",
 ]
 
 
@@ -55,6 +77,26 @@ COMMON_PATHS = [
     "/inquiry/index.html",
 ]
 
+# 優先度2: 会社概要・店舗概要系のURLパターン
+ABOUT_COMMON_PATHS = [
+    "/company",
+    "/company/",
+    "/about",
+    "/about/",
+    "/about-us",
+    "/about-us/",
+    "/aboutus",
+    "/aboutus/",
+    "/profile",
+    "/profile/",
+    "/corporate",
+    "/corporate/",
+    "/shop",
+    "/shop/",
+    "/access",
+    "/access/",
+]
+
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0"
@@ -73,6 +115,10 @@ _SOFT_404_STRINGS = [
 # これらはリンクテキスト・title・aria-label・img alt のみを検索対象にする
 _HREF_EXCLUDED_KEYWORDS = {"mail"}
 
+# 会社概要系キーワードのうち、href への部分一致で誤検出しやすい短い英単語
+# （URLパラメータ等に偶然含まれるケースを避けるため、リンクテキスト側のみで判定する）
+_ABOUT_HREF_EXCLUDED_KEYWORDS = {"about us", "about", "company", "profile", "shop", "access"}
+
 
 def find_contact_info(website_url: str) -> tuple[str, bool, list[str]]:
     """
@@ -87,24 +133,24 @@ def find_contact_info(website_url: str) -> tuple[str, bool, list[str]]:
     if not website_url:
         return "", False, []
 
-    # ① トップページからメール抽出
+    # ③ 優先度3: トップページからメール抽出
     emails = extract_emails_from_url(website_url)
 
-    # ② トップページ内のリンクから問い合わせページを探す
+    # ① 優先度1: トップページ内のリンクから問い合わせページを探す
     contact_url, has_form, contact_emails = find_contact_from_links(website_url)
     emails.extend(contact_emails)
 
-    if contact_url:
-        return contact_url, has_form, unique_emails(emails)
+    # ① 優先度1: リンクで見つからない場合はよくあるURLパターンを直接探す
+    if not contact_url:
+        contact_url, has_form, contact_emails = find_contact_from_common_paths(website_url)
+        emails.extend(contact_emails)
 
-    # ③ よくあるURLパターンを直接探す
-    contact_url, has_form, contact_emails = find_contact_from_common_paths(website_url)
-    emails.extend(contact_emails)
+    # ② 優先度2: 会社概要・店舗概要系ページからメールを追加探索
+    # （問い合わせURLの判定には使わず、メールアドレスの取得漏れ対策として加える）
+    about_emails = find_about_page_emails(website_url, exclude_url=contact_url)
+    emails.extend(about_emails)
 
-    if contact_url:
-        return contact_url, has_form, unique_emails(emails)
-
-    return "", False, unique_emails(emails)
+    return contact_url, has_form, unique_emails(emails)
 
 
 def find_contact_from_links(website_url: str) -> tuple[str, bool, list[str]]:
@@ -165,6 +211,14 @@ def is_invalid_href(href: str) -> bool:
     return any(href.startswith(prefix) for prefix in invalid_prefixes)
 
 def _link_matches_contact_keyword(a_tag) -> bool:
+    return _link_matches_keyword(a_tag, CONTACT_KEYWORDS, _HREF_EXCLUDED_KEYWORDS)
+
+
+def _link_matches_about_keyword(a_tag) -> bool:
+    return _link_matches_keyword(a_tag, ABOUT_KEYWORDS, _ABOUT_HREF_EXCLUDED_KEYWORDS)
+
+
+def _link_matches_keyword(a_tag, keywords: list[str], href_excluded_keywords: set[str]) -> bool:
     texts_no_href = [
         a_tag.get_text(strip=True),
         a_tag.get("title", ""),
@@ -177,9 +231,9 @@ def _link_matches_contact_keyword(a_tag) -> bool:
     text_no_href = " ".join(texts_no_href).lower()
     text_with_href = f"{text_no_href} {a_tag.get('href', '').lower()}"
 
-    for keyword in CONTACT_KEYWORDS:
+    for keyword in keywords:
         kw = keyword.lower()
-        search_text = text_no_href if kw in _HREF_EXCLUDED_KEYWORDS else text_with_href
+        search_text = text_no_href if kw in href_excluded_keywords else text_with_href
         if kw in search_text:
             return True
     return False
@@ -240,6 +294,53 @@ def find_contact_from_common_paths(website_url: str) -> tuple[str, bool, list[st
             return candidate_url, False, emails
 
     return "", False, []
+
+
+def find_about_page_emails(website_url: str, exclude_url: str = "") -> list[str]:
+    """会社概要・店舗概要系ページからメールアドレスを探す（優先度2）。
+
+    問い合わせURL・フォーム有無の判定には影響させず、メールアドレスの
+    取得漏れを減らすための追加探索として使う。
+    """
+    try:
+        response = requests.get(website_url, timeout=10, headers=HEADERS)
+        response.encoding = response.apparent_encoding
+
+        if response.status_code >= 400:
+            return []
+
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        about_url = ""
+        for a_tag in soup.find_all("a", href=True):
+            href_raw = a_tag["href"].strip()
+            href_lower = href_raw.lower()
+
+            if is_invalid_href(href_lower):
+                continue
+
+            if _link_matches_about_keyword(a_tag):
+                about_url = urljoin(website_url, href_raw)
+                break
+
+        if not about_url:
+            for path in ABOUT_COMMON_PATHS:
+                candidate_url = urljoin(website_url, path)
+                if page_exists(candidate_url):
+                    about_url = candidate_url
+                    break
+
+        if not about_url or about_url == exclude_url:
+            return []
+
+        emails = extract_emails_from_url(about_url)
+        if emails:
+            write_info_log(f"[メール取得] 会社概要ページからメールを取得: {about_url}")
+        return emails
+
+    except requests.RequestException as e:
+        write_error_log(f"find_about_page_emails error: {website_url} / {e}")
+        return []
 
 
 def page_exists(url: str) -> bool:
